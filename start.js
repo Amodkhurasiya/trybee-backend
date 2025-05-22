@@ -5,7 +5,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 
 // Check if uploads directory exists
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -24,14 +23,15 @@ if (!fs.existsSync(envPath)) {
   
   // Create basic .env content
   const envContent = `PORT=5000
-MONGODB_URI=mongodb://localhost:27017/trybee
-JWT_SECRET=trybee_jwt_secret_${Math.floor(Math.random() * 10000)}
-ADMIN_REGISTRATION_KEY=trybee_admin_2024
+MONGODB_URI=${process.env.MONGODB_URI || 'mongodb://localhost:27017/trybee'}
+JWT_SECRET=${process.env.JWT_SECRET || `trybee_jwt_secret_${Math.floor(Math.random() * 10000)}`}
+ADMIN_REGISTRATION_KEY=${process.env.ADMIN_REGISTRATION_KEY || 'trybee_admin_2024'}
+NODE_ENV=${process.env.NODE_ENV || 'development'}
 
 # Cloudinary Configuration (optional, images will be stored locally if not provided)
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
+CLOUDINARY_CLOUD_NAME=${process.env.CLOUDINARY_CLOUD_NAME || 'your_cloud_name'}
+CLOUDINARY_API_KEY=${process.env.CLOUDINARY_API_KEY || 'your_api_key'}
+CLOUDINARY_API_SECRET=${process.env.CLOUDINARY_API_SECRET || 'your_api_secret'}
 
 # Email Configuration (for contact form)
 # For Gmail:
@@ -43,7 +43,7 @@ CLOUDINARY_API_SECRET=your_api_secret
 # Note: For Gmail, you need to generate an App Password
 
 # Admin email to receive contact form submissions
-ADMIN_EMAIL=admin@trybee.com
+ADMIN_EMAIL=${process.env.ADMIN_EMAIL || 'admin@trybee.com'}
 `;
 
   fs.writeFileSync(envPath, envContent);
@@ -51,16 +51,31 @@ ADMIN_EMAIL=admin@trybee.com
   console.log('⚠️ You may want to update the .env file with your own values.');
 }
 
+// Set the default NODE_ENV if not already set
+process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+
 // Start the server
 console.log('✨ Starting the Trybee backend server...');
+console.log(`Environment: ${process.env.NODE_ENV}`);
+console.log(`Memory usage: ${Math.round(process.memoryUsage().rss / 1024 / 1024)} MB`);
+
 try {
   require('./server');
   console.log('🌟 Server startup script completed successfully.');
 } catch (error) {
-  console.error('❌ Error starting the server:', error);
-  console.log('\nSuggestions to fix:');
-  console.log('1. Make sure MongoDB is running');
-  console.log('2. Check your .env configuration');
-  console.log('3. Ensure all dependencies are installed: npm install');
-  process.exit(1);
+  console.error('❌ Error in server startup script:', error);
+  console.log('\nAttempting to continue regardless of error...');
+  
+  // Try to directly require server.js instead of exiting
+  try {
+    require('./server');
+  } catch (secondError) {
+    console.error('❌ Critical error - could not start server:', secondError);
+    console.log('\nSuggestions to fix:');
+    console.log('1. Make sure MongoDB is running and accessible');
+    console.log('2. Check your .env configuration (especially MONGODB_URI)');
+    console.log('3. Ensure all dependencies are installed: npm install');
+    // Don't exit - Railway may retry automatically
+    console.log('Waiting for automatic restart...');
+  }
 } 

@@ -24,8 +24,8 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' })); // Limit JSON payload size
+app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Limit URL-encoded payload size
 
 // Configure CORS to allow specific origins
 app.use(cors({
@@ -47,10 +47,36 @@ app.use('/uploads', express.static(uploadsDir));
 // For backward compatibility
 app.use('/uploads/uploads', express.static(uploadsDir));
 
-// Database connection
-mongoose.connect(process.env.MONGODB_URI)
+// Add a health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Server is running' });
+});
+
+// Database connection with improved error handling
+mongoose.connect(process.env.MONGODB_URI, {
+  serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds
+  socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+})
   .then(() => console.log('Connected to MongoDB'))
-  .catch((err) => console.error('MongoDB connection error:', err));
+  .catch((err) => {
+    console.error('MongoDB connection error:', err);
+    // Don't crash the server, retry connection
+  });
+
+// Handle MongoDB connection errors
+mongoose.connection.on('error', err => {
+  console.error('MongoDB connection error:', err);
+});
+
+// Reconnect if MongoDB connection is lost
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected! Attempting to reconnect...');
+  setTimeout(() => {
+    mongoose.connect(process.env.MONGODB_URI).catch(err => {
+      console.error('Error reconnecting to MongoDB:', err);
+    });
+  }, 5000); // Wait 5 seconds before reconnecting
+});
 
 // Routes
 app.use('/api/auth', require('./routes/auth.routes'));
@@ -61,14 +87,46 @@ app.use('/api/orders', require('./routes/order.routes'));
 app.use('/api/users', require('./routes/user.routes'));
 app.use('/api/contact', require('./routes/contact.routes'));
 
+// 404 handler
+app.use((req, res, next) => {
+  res.status(404).json({ message: 'Route not found' });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Something went wrong!' });
+  console.error('Server error:', err);
+  res.status(500).json({ message: 'Something went wrong!', error: process.env.NODE_ENV === 'production' ? null : err.message });
+});
+
+// Process handling for graceful shutdown
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  // Keep the process running instead of crashing
+  console.log('Application will continue running despite the error');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Keep the process running instead of crashing
+  console.log('Application will continue running despite the rejection');
+});
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down gracefully.');
+  mongoose.connection.close(() => {
+    console.log('MongoDB connection closed.');
+    process.exit(0);
+  });
+  
+  // If MongoDB doesn't close in 5 seconds, force shutdown
+  setTimeout(() => {
+    console.log('Could not close MongoDB connections in time, forcing shutdown');
+    process.exit(1);
+  }, 5000);
 });
 
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 }); 
