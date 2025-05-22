@@ -26,7 +26,15 @@ if (!fs.existsSync(uploadsDir)) {
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+
+// Configure CORS to allow specific origins
+app.use(cors({
+  origin: ['https://trybee.me', 'https://amodkhurasiya.github.io', 'http://localhost:3000', 'http://localhost:5173'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
 app.use(morgan('dev'));
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
