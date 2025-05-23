@@ -1,0 +1,11 @@
+[phases.setup]
+aptPkgs = ["nodejs"]
+
+[phases.install]
+cmds = ["npm install --no-audit --no-fund"]
+
+[phases.build]
+cmds = ["npm run postinstall"]
+
+[start]
+cmd = "node start.js" 
