@@ -18,12 +18,21 @@ try {
     
     // Create an emergency minimal server
     const express = require('express');
+    const cors = require('cors');
     const app = express();
     const PORT = process.env.PORT || 5000;
     
     app.use(express.json());
     
-    // Enable CORS for all routes
+    // Enable CORS for all routes with proper configuration
+    app.use(cors({
+      origin: '*',
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+      credentials: true
+    }));
+    
+    // Add backup CORS headers
     app.use((req, res, next) => {
       res.header('Access-Control-Allow-Origin', '*');
       res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
