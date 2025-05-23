@@ -4,7 +4,7 @@
   "description": "Backend for Trybee e-commerce platform",
   "main": "server.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node server.js",
     "dev": "nodemon start.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepare-deploy": "npm prune --production",
