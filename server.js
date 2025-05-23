@@ -27,9 +27,9 @@ if (!fs.existsSync(uploadsDir)) {
 app.use(express.json({ limit: '10mb' })); // Limit JSON payload size
 app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Limit URL-encoded payload size
 
-// Configure CORS - allow ALL origins as a fallback for Railway deployment issues
+// Configure CORS - allow specific origins
 app.use(cors({
-  origin: '*',
+  origin: ['https://trybee.me', 'https://www.trybee.me', 'http://localhost:5173'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -37,7 +37,13 @@ app.use(cors({
 
 // Add more specific CORS headers as backup
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const allowedOrigins = ['https://trybee.me', 'https://www.trybee.me', 'http://localhost:5173'];
+  const origin = req.headers.origin;
+  
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') {
