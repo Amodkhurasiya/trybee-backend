@@ -8,7 +8,9 @@
     "dev": "nodemon start.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepare-deploy": "npm prune --production",
-    "heroku-postbuild": "echo 'Heroku build completed'"
+    "postinstall": "mkdir -p uploads",
+    "docker-build": "docker build -t trybee-backend .",
+    "docker-run": "docker run -p 5000:5000 --env-file .env trybee-backend"
   },
   "keywords": [
     "e-commerce",
